@@ -27,6 +27,7 @@ html,body {
   width:100%;
   height:100%;
   overflow:hidden;
+  overscroll-behavior:none;
   background:var(--ink);
   color:var(--paper);
   font-family:Arial,Helvetica,sans-serif
@@ -49,6 +50,15 @@ button,canvas {
   touch-action:none;
   user-select:none;
   -webkit-user-select:none
+}
+/* A held finger can land on a control wrapper or HUD label as well as a button. */
+#scene, #game-ui, #game-ui * {
+  -webkit-touch-callout:none;
+  -webkit-user-select:none;
+  user-select:none;
+}
+#scene, #game-ui {
+  touch-action:none;
 }
 button {
   border:0
@@ -1201,6 +1211,7 @@ h1 span {
   }
   function beginGame() {
     clearInputs();
+    window.getSelection()?.removeAllRanges();
     const map = maps[selectedMap];
     game = {
       mode: selectedMode, mapIndex: selectedMap, map, faceToFace: selectedMode !== 'solo' && $('face-to-face').checked,
@@ -2618,6 +2629,7 @@ h1 span {
     if(screen!=='paused')return;
     screen='playing';
     clearInputs();
+    window.getSelection()?.removeAllRanges();
     $('pause').hidden=true;
     accumulator=0;
     lastTime=performance.now();
@@ -2749,9 +2761,20 @@ h1 span {
     }
   });
   window.addEventListener('resize',resize);
-  window.addEventListener('contextmenu',event=> {
-    if(screen==='playing')event.preventDefault();
-  });
+  function preventGameGesture(event) {
+    if (screen === 'playing' && event.cancelable) event.preventDefault();
+  }
+  // Safari callouts and zoom gestures need explicit cancellation during play.
+  for (const type of ['contextmenu', 'selectstart', 'dblclick', 'gesturestart', 'gesturechange', 'gestureend']) {
+    document.addEventListener(type, preventGameGesture, { capture: true, passive: false });
+  }
+  for (const type of ['touchstart', 'touchmove', 'touchend']) {
+    document.addEventListener(type, event => {
+      // Toolbar buttons use normal taps. Driving controls use pointer events.
+      if (event.target.closest?.('.game-top')) return;
+      preventGameGesture(event);
+    }, { capture: true, passive: false });
+  }
   updateSoundButtons();
   resize();
   requestAnimationFrame(frame);
