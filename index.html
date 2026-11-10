@@ -886,7 +886,7 @@ h1 span {
   <footer class="menu-footer"><span><span class="status-dot"></span>3 YARDS · 3 WAYS TO PLAY</span><span class="keys">WASD TO DRIVE &nbsp; / &nbsp; SPACE TO FIRE</span><span>LOCAL ARCADE / VOL. 01</span></footer>
 </main>
 <div id="game-ui" hidden><div class="game-top"><button id="pause-game" aria-label="Pause game"><svg viewBox="0 0 24 24"><path d="M8 5v14M16 5v14"/></svg></button><button id="sound-game" aria-label="Toggle sound"><svg viewBox="0 0 24 24"><path d="M4 9h4l5-4v14l-5-4H4zM17 8c3 2 3 6 0 8"/></svg></button><button id="fullscreen" aria-label="Toggle fullscreen"><svg viewBox="0 0 24 24"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5"/></svg></button></div><div id="panels"></div><div class="shared-hud" id="shared-hud"></div><div class="center-message" id="center-message" hidden><b></b><small></small></div></div>
-<div class="overlay" id="help" hidden><section class="dialog" role="dialog" aria-modal="true" aria-labelledby="help-title"><div class="eyebrow">DRIVER'S BRIEFING</div><h2 id="help-title">Own the yard.</h2><p>In Defense, keep the crusher alive through five waves. In Duel, knock out the other driver three times. Containers stop bullets. Use the gaps, collect supplies, and keep moving.</p><div class="help-grid"><div><strong>TOUCH</strong><p>Left stick drives.<br>Hold the crosshair to fire.<br>Tap BOOST to escape.<br>Shots assist toward targets ahead.</p></div><div><strong>KEYBOARD</strong><p>P1 · WASD / Space / E<br>P2 · Arrows / Enter / Shift<br>Drive / Fire / Boost<br>Escape or P to pause.</p></div></div><div class="help-pickups"><span>+ REPAIR</span><span>» RAPID FIRE</span><span>◇ SHIELD</span></div><p>Defense teammates can recover after a knockout. If both are down, or the crusher falls, the yard is lost. Same-device multiplayer supports independent touch controls and optional face-to-face views.</p><button class="start" id="help-close">LET'S DRIVE <span>↗</span></button></section></div>
+<div class="overlay" id="help" hidden><section class="dialog" role="dialog" aria-modal="true" aria-labelledby="help-title"><div class="eyebrow">DRIVER'S BRIEFING</div><h2 id="help-title">Own the yard.</h2><p>In Defense, keep the crusher alive through five waves. In Duel, knock out the other driver three times. Containers stop bullets. Use the gaps, collect supplies, and keep moving.</p><div class="help-grid"><div><strong>TOUCH</strong><p>Left stick drives.<br>Hold the crosshair to fire.<br>Tap BOOST to escape.<br>Shots assist toward targets ahead.</p></div><div><strong>KEYBOARD</strong><p>P1 · WASD / Space / E<br>P2 · Arrows / Enter / Shift<br>Drive / Fire / Boost<br>Escape or P to pause.</p></div></div><div class="help-pickups"><span>+ REPAIR</span><span>» RAPID FIRE</span><span>◇ SHIELD</span></div><p>Side gates open from wave two. Orange rings on the yard and mini-map warn of incoming groups. Shooters hang back, while heavies head for the crusher.</p><p>Defense teammates can recover after a knockout. If both are down, or the crusher falls, the yard is lost. Same-device multiplayer supports independent touch controls and optional face-to-face views.</p><button class="start" id="help-close">LET'S DRIVE <span>↗</span></button></section></div>
 <div class="overlay" id="pause" hidden><section class="dialog" role="dialog" aria-modal="true" aria-labelledby="pause-title"><div class="eyebrow">ENGINE IDLING</div><h2 id="pause-title">Take a breather.</h2><p>The yard will wait. Your run resumes exactly where you left it.</p><button class="start" id="resume-game">BACK TO THE FIGHT <span>↗</span></button><button class="start secondary" id="restart-game">RESTART MATCH</button><button class="quiet" id="quit-game">RETURN TO GARAGE</button></section></div>
 <div class="overlay" id="result" hidden><section class="dialog" role="dialog" aria-modal="true" aria-labelledby="result-title"><div class="eyebrow" id="result-eyebrow">SHIFT COMPLETE</div><h2 id="result-title">Yard secured.</h2><p id="result-description"></p><div class="result-stats" id="result-stats"></div><button class="start" id="next-game">NEXT SCRAPYARD <span>↗</span></button><button class="start secondary" id="rematch-game">RUN IT BACK</button><button class="quiet" id="result-home">RETURN TO GARAGE</button></section></div>
 <script>
@@ -929,6 +929,10 @@ h1 span {
       x: 800, y: 70
     }, {
       x: 1500, y: 120
+    }, {
+      x: 80, y: 760, opensAtWave: 2
+    }, {
+      x: 1520, y: 760, opensAtWave: 2
     }],
     obstacles: [
     [240,160,320,100,'container',0], [1040,160,320,100,'container',2],
@@ -959,6 +963,10 @@ h1 span {
       x: 1480, y: 90
     }, {
       x: 800, y: 1040
+    }, {
+      x: 80, y: 560, opensAtWave: 2
+    }, {
+      x: 1520, y: 560, opensAtWave: 2
     }],
     obstacles: [
     [320,200,240,120,'cars',0], [1040,200,240,120,'cars',1],
@@ -987,6 +995,10 @@ h1 span {
       x: 1510, y: 100
     }, {
       x: 800, y: 65
+    }, {
+      x: 80, y: 760, opensAtWave: 2
+    }, {
+      x: 1520, y: 760, opensAtWave: 2
     }],
     obstacles: [
     [360,160,120,280,'container',2], [1120,160,120,280,'container',0],
@@ -1219,7 +1231,7 @@ h1 span {
       base: {
         ...map.base, hp: 350, maxHp: 350, radius: 50, hit: 0
       },
-      phase: 'countdown', phaseTime: 4, wave: 0, spawnLeft: 0, spawnTimer: 0, flowTimer: 0,
+      phase: 'countdown', phaseTime: 4, wave: 0, spawnLeft: 0, spawnTotal: 0, spawnTimer: 0, spawnWarnings: [], flowTimer: 0,
       time: 0, kills: 0, score: 0, shots: 0, scores: [0, 0], round: 1, roundTime: 75, roundWinner: null,
       pickupTimer: 9, notice: '', noticeDetail: '', noticeTime: 0, cameraShake: 0, hudTimer: 0
     };
@@ -1308,23 +1320,33 @@ h1 span {
     game.wave++;
     game.phase = 'wave';
     game.spawnLeft = Math.ceil((7 + game.wave * 3) * (game.mode === 'coop' ? 1.5 : 1));
+    game.spawnTotal = game.spawnLeft;
     game.spawnTimer = .7;
-    announce('Wave ' + game.wave + ' / 5', game.wave === 5 ? 'FINAL PUSH · HOLD YOUR GROUND' : ['CONTACT AT THE GATES', 'KEEP THE ALLEYS CLEAR', 'HEAVY SALVAGERS INBOUND', 'THE YARD IS HEATING UP'][game.wave - 1], 2.8);
+    announce('Wave ' + game.wave + ' / 5', game.wave === 5 ? 'FINAL PUSH · WATCH EVERY ENTRANCE' : ['CONTACT AT THE GATES', 'SIDE GATES OPEN · WATCH THE MINI-MAP', 'HEAVIES TARGET THE CRUSHER', 'ATTACKS FROM MULTIPLE DIRECTIONS'][game.wave - 1], 3.5);
     sound('wave');
   }
-  function spawnEnemy() {
-    const gate = game.map.gates[(game.spawnLeft + game.wave) % game.map.gates.length];
-    const point = findOpenPoint( {
-      x: gate.x + (Math.random() - .5) * 50, y: gate.y
-    }, 29);
-    const heavy = game.wave >= 3 && game.spawnLeft % 5 === 0;
-    const shooter = !heavy && game.wave >= 2 && game.spawnLeft % 4 === 0;
-    const type = heavy ? 'heavy' : shooter ? 'shooter' : 'rammer';
+  function queueAttack() {
+    const gates = game.map.gates.filter(gate => (gate.opensAtWave || 1) <= game.wave);
+    const groupSize = Math.min(game.spawnLeft, game.wave === 1 ? 1 : 3);
+    for (let i = 0; i < groupSize; i++) {
+      const spawnIndex = game.spawnTotal - game.spawnLeft;
+      const gate = gates[(spawnIndex + game.wave) % gates.length];
+      const point = findOpenPoint({ x: gate.x + (Math.random() - .5) * 40, y: gate.y }, 29);
+      const heavy = game.wave >= 3 && spawnIndex % 5 === 0;
+      const shooter = !heavy && game.wave >= 2 && spawnIndex % 4 === 0;
+      game.spawnWarnings.push({ ...point, type: heavy ? 'heavy' : shooter ? 'shooter' : 'rammer', remaining: 1.6 });
+      game.spawnLeft--;
+    }
+  }
+  function spawnEnemy(spawn) {
+    const { x, y, type } = spawn;
+    const heavy = type === 'heavy';
+    const shooter = type === 'shooter';
     const hp = heavy ? 160 : shooter ? 76 : 55 + game.wave * 3;
     game.enemies.push( {
-      ...point, type, hp, maxHp: hp, radius: heavy ? 27 : 19, angle: Math.PI / 2, speed: heavy ? 48 : shooter ? 62 : 70 + game.wave * 3, cooldown: 1 + Math.random(), hit: 0, contact: 0, dead: false, wobble: Math.random() * TAU
+      x, y, type, hp, maxHp: hp, radius: heavy ? 27 : 19, angle: Math.atan2(game.base.y - y, game.base.x - x), speed: heavy ? 48 : shooter ? 62 : 70 + game.wave * 3, cooldown: 1 + Math.random(), hit: 0, contact: 0, dead: false, wobble: Math.random() * TAU
     });
-    burst(point.x, point.y, '#f5ad65', 8, 45);
+    burst(x, y, '#f5ad65', 8, 45);
   }
   function aimTarget(player) {
     const targets = game.mode === 'duel' ? game.players.filter(p => p.id !== player.id && !p.dead) : game.enemies.filter(e => !e.dead);
@@ -1483,19 +1505,21 @@ h1 span {
       enemy.hit = Math.max(0, enemy.hit - dt);
       enemy.wobble += dt * 10;
       let target = game.base, flow = game.baseFlow;
-      let closestDistance = enemy.type === 'shooter' ? 490 : 240;
-      for (const player of game.players) {
-        if (player.dead) continue;
-        const d = distance(enemy, player);
-        if (d < closestDistance) {
-          target = player;
-          flow = game.playerFlows[player.id];
-          closestDistance = d;
+      let closestDistance = enemy.type === 'shooter' ? 640 : 240;
+      if (enemy.type !== 'heavy') {
+        for (const player of game.players) {
+          if (player.dead) continue;
+          const d = distance(enemy, player);
+          if (d < closestDistance) {
+            target = player;
+            flow = game.playerFlows[player.id];
+            closestDistance = d;
+          }
         }
       }
       const d = distance(enemy, target);
       const clear = lineClear(enemy, target, 5);
-      const stoppingDistance = enemy.type === 'shooter' ? 260 : enemy.radius + target.radius - 1;
+      const stoppingDistance = enemy.type === 'shooter' ? 430 : enemy.radius + target.radius - 1;
       if (d > stoppingDistance || !clear) {
         const destination = navigationTarget(enemy, target, flow);
         const direction = Math.atan2(destination.y - enemy.y, destination.x - enemy.x);
@@ -1696,10 +1720,14 @@ h1 span {
         if (game.phase === 'wave') {
           game.spawnTimer -= dt;
           if (game.spawnLeft > 0 && game.spawnTimer <= 0) {
-            spawnEnemy();
-            game.spawnLeft--;
-            game.spawnTimer = Math.max(.5, 1.35 - game.wave * .1);
+            queueAttack();
+            game.spawnTimer = game.wave === 1 ? 1.25 : 3.7 - game.wave * .2;
           }
+          for (const spawn of game.spawnWarnings) {
+            spawn.remaining -= dt;
+            if (spawn.remaining <= 0) spawnEnemy(spawn);
+          }
+          game.spawnWarnings = game.spawnWarnings.filter(spawn => spawn.remaining > 0);
         }
         updateEnemies(dt);
       }
@@ -1729,7 +1757,7 @@ h1 span {
           finishGame(false);
           return;
         }
-        if (game.phase === 'wave' && game.spawnLeft === 0 && game.enemies.length === 0) {
+        if (game.phase === 'wave' && game.spawnLeft === 0 && game.spawnWarnings.length === 0 && game.enemies.length === 0) {
           game.score += Math.round(game.base.hp * .5) + 150;
           if (game.wave === 5) {
             finishGame(true);
@@ -2278,6 +2306,20 @@ h1 span {
   function drawWorld(c, time) {
     c.drawImage(mapCanvas,0,0);
     if(game.mode!=='duel')drawBase(c,game.base,time);
+    c.save();
+    c.strokeStyle = '#ffbd78';
+    c.fillStyle = '#ffbd78';
+    c.lineWidth = 3;
+    c.font = 'bold 12px monospace';
+    c.textAlign = 'center';
+    for (const spawn of game.spawnWarnings) {
+      c.globalAlpha = .65 + Math.sin(time * 12) * .2;
+      c.beginPath();
+      c.arc(spawn.x, spawn.y, 28 + spawn.remaining * 10, 0, TAU);
+      c.stroke();
+      c.fillText('INBOUND', spawn.x, spawn.y - 48);
+    }
+    c.restore();
     for(const supply of game.pickups)drawSupply(c,supply);
     for(const enemy of game.enemies)drawEnemy(c,enemy,time);
     for(const player of game.players)drawBuggy(c,player,time);
@@ -2327,6 +2369,13 @@ h1 span {
       c.fillRect(game.base.x-35,game.base.y-35,70,70);
     }
     c.fillStyle='#f2a66e';
+    c.strokeStyle = '#ffbd78';
+    c.lineWidth = 18;
+    for (const spawn of game.spawnWarnings) {
+      c.beginPath();
+      c.arc(spawn.x, spawn.y, 40, 0, TAU);
+      c.stroke();
+    }
     for(const enemy of game.enemies) {
       c.beginPath();
       c.arc(enemy.x,enemy.y,16,0,TAU);
