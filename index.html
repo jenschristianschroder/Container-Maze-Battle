@@ -1033,8 +1033,9 @@ h1 span {
     /* Storage is optional, including in private browsers. */
   }
   const keys = new Set();
+  const useTouchEvents = 'ontouchstart' in window;
   const inputs = [0, 1].map(() => ( {
-    x: 0, y: 0, fire: false, boost: false, stickPointer: null, firePointer: null
+    x: 0, y: 0, fire: false, boost: false, stickPointer: null, firePointer: null, stickTouch: null, fireTouch: null
   }));
   const ui = [];
   function seededRandom(seed) {
@@ -2519,6 +2520,93 @@ h1 span {
     },0,true);
     c.restore();
   }
+  function moveStick(id, point) {
+    const bounds = ui[id].stick.getBoundingClientRect();
+    const radius = bounds.width * .35;
+    let x = (point.clientX - bounds.left - bounds.width / 2) / radius;
+    let y = (point.clientY - bounds.top - bounds.height / 2) / radius;
+    const length = Math.hypot(x, y);
+    if (length > 1) {
+      x /= length;
+      y /= length;
+    }
+    const sign = game.faceToFace && id === 0 ? -1 : 1;
+    inputs[id].x = x * sign;
+    inputs[id].y = y * sign;
+    ui[id].knob.style.transform = 'translate(' + (x * radius * sign) + 'px,' + (y * radius * sign) + 'px)';
+  }
+  function capturePointer(control, pointerId) {
+    try {
+      control.setPointerCapture(pointerId);
+    }
+    catch (_) {
+      // Document listeners still handle movement and release if capture fails.
+    }
+  }
+  function releaseCapture(control, pointerId) {
+    if (pointerId === null || !control) return;
+    try {
+      if (control.hasPointerCapture(pointerId)) control.releasePointerCapture(pointerId);
+    }
+    catch (_) {
+      // A cancelled pointer may already have been removed by the browser.
+    }
+  }
+  function releaseStick(id) {
+    const input = inputs[id], controls = ui[id], pointerId = input.stickPointer;
+    input.stickPointer = input.stickTouch = null;
+    input.x = input.y = 0;
+    if (controls) controls.knob.style.transform = '';
+    releaseCapture(controls?.stick, pointerId);
+  }
+  function releaseFire(id) {
+    const input = inputs[id], controls = ui[id], pointerId = input.firePointer;
+    input.firePointer = input.fireTouch = null;
+    input.fire = false;
+    if (controls) controls.fire.classList.remove('held');
+    releaseCapture(controls?.fire, pointerId);
+  }
+  function releasePointer(event) {
+    for (let id = 0; id < inputs.length; id++) {
+      const input = inputs[id], controls = ui[id];
+      const lostCapture = event.type === 'lostpointercapture';
+      if (input.stickPointer === event.pointerId && (!lostCapture || event.target === controls?.stick)) releaseStick(id);
+      if (input.firePointer === event.pointerId && (!lostCapture || event.target === controls?.fire)) releaseFire(id);
+    }
+  }
+  function syncTouches(event) {
+    // Touch identifiers are independent of pointer IDs. The remaining-touch
+    // list also recovers a missed end event without interrupting held fingers.
+    const active = new Map(Array.from(event.touches, touch => [touch.identifier, touch]));
+    const started = new Set(event.type === 'touchstart' ? Array.from(event.changedTouches, touch => touch.identifier) : []);
+    for (let id = 0; id < inputs.length; id++) {
+      const input = inputs[id];
+      if (started.has(input.stickTouch)) releaseStick(id);
+      if (started.has(input.fireTouch)) releaseFire(id);
+      if (input.stickTouch !== null) {
+        const touch = active.get(input.stickTouch);
+        if (touch) moveStick(id, touch);
+        else releaseStick(id);
+      }
+      if (input.fireTouch !== null && !active.has(input.fireTouch)) releaseFire(id);
+    }
+    if (event.type !== 'touchstart' || screen !== 'playing') return;
+    for (const touch of Array.from(event.changedTouches)) {
+      for (let id = 0; id < ui.length; id++) {
+        const controls = ui[id], input = inputs[id];
+        if (controls.stick.contains(touch.target) && input.stickTouch === null && input.stickPointer === null) {
+          input.stickTouch = touch.identifier;
+          moveStick(id, touch);
+        }
+        if (controls.fire.contains(touch.target) && input.fireTouch === null && input.firePointer === null) {
+          input.fireTouch = touch.identifier;
+          input.fire = true;
+          controls.fire.classList.add('held');
+        }
+        if (controls.boost.contains(touch.target)) input.boost = true;
+      }
+    }
+  }
   function buildPanels() {
     $('panels').replaceChildren();
     ui.length=0;
@@ -2531,70 +2619,40 @@ h1 span {
       $('panels').append(panel);
       const stick=panel.querySelector('.stick'),knob=panel.querySelector('.stick-knob'),fire=panel.querySelector('.fire'),boost=panel.querySelector('.boost');
       const input=inputs[id];
-      function moveStick(event) {
-        if(input.stickPointer!==event.pointerId)return;
-        const bounds=stick.getBoundingClientRect();
-        const radius=bounds.width*.35;
-        let x=(event.clientX-bounds.left-bounds.width/2)/radius,y=(event.clientY-bounds.top-bounds.height/2)/radius;
-        const length=Math.hypot(x,y);
-        if(length>1) {
-          x/=length;
-          y/=length;
-        }
-        const sign=game.faceToFace&&id===0?-1:1;
-        input.x=x*sign;
-        input.y=y*sign;
-        knob.style.transform='translate('+(x*radius*sign)+'px,'+(y*radius*sign)+'px)';
-      }
       stick.addEventListener('pointerdown',event=> {
-        if(screen!=='playing'||input.stickPointer!==null)return;
+        if ((useTouchEvents && event.pointerType === 'touch') || event.button !== 0) return;
+        if(screen!=='playing'||input.stickPointer!==null||input.stickTouch!==null)return;
         event.preventDefault();
         input.stickPointer=event.pointerId;
-        stick.setPointerCapture(event.pointerId);
-        moveStick(event);
+        capturePointer(stick, event.pointerId);
+        moveStick(id, event);
       });
-      stick.addEventListener('pointermove',moveStick);
-      function releaseStick(event) {
-        if(input.stickPointer!==event.pointerId)return;
-        input.stickPointer=null;
-        input.x=0;
-        input.y=0;
-        knob.style.transform='';
-      }
-      for(const type of ['pointerup','pointercancel','lostpointercapture'])stick.addEventListener(type,releaseStick);
       fire.addEventListener('pointerdown',event=> {
-        if(screen!=='playing'||input.firePointer!==null)return;
+        if ((useTouchEvents && event.pointerType === 'touch') || event.button !== 0) return;
+        if(screen!=='playing'||input.firePointer!==null||input.fireTouch!==null)return;
         event.preventDefault();
         input.firePointer=event.pointerId;
         input.fire=true;
         fire.classList.add('held');
-        fire.setPointerCapture(event.pointerId);
+        capturePointer(fire, event.pointerId);
       });
-      function releaseFire(event) {
-        if(input.firePointer!==event.pointerId)return;
-        input.firePointer=null;
-        input.fire=false;
-        fire.classList.remove('held');
-      }
-      for(const type of ['pointerup','pointercancel','lostpointercapture'])fire.addEventListener(type,releaseFire);
       boost.addEventListener('pointerdown',event=> {
+        if ((useTouchEvents && event.pointerType === 'touch') || event.button !== 0) return;
         event.preventDefault();
         if(screen==='playing')input.boost=true;
       });
       ui.push( {
-        panel,knob,fire,boost,health:panel.querySelector('.health-fill'),healthText:panel.querySelector('.health-text'),power:panel.querySelector('.power-label'),notice:panel.querySelector('.panel-notice')
+        panel,stick,knob,fire,boost,health:panel.querySelector('.health-fill'),healthText:panel.querySelector('.health-text'),power:panel.querySelector('.power-label'),notice:panel.querySelector('.panel-notice')
       });
     }
     updateHUD();
   }
   function clearInputs() {
     keys.clear();
-    for(const input of inputs)Object.assign(input, {
-      x:0,y:0,fire:false,boost:false,stickPointer:null,firePointer:null
-    });
-    for(const controls of ui) {
-      controls.knob.style.transform='';
-      controls.fire.classList.remove('held');
+    for(let id=0;id<inputs.length;id++) {
+      releaseStick(id);
+      releaseFire(id);
+      inputs[id].boost=false;
     }
   }
   function resize() {
@@ -2803,6 +2861,10 @@ h1 span {
     clearInputs();
     pauseGame();
   });
+  window.addEventListener('pagehide',()=> {
+    clearInputs();
+    pauseGame();
+  });
   document.addEventListener('visibilitychange',()=> {
     if(document.hidden) {
       clearInputs();
@@ -2810,6 +2872,19 @@ h1 span {
     }
   });
   window.addEventListener('resize',resize);
+  for (const type of ['pointerdown', 'pointerup', 'pointercancel', 'lostpointercapture']) {
+    document.addEventListener(type, releasePointer, true);
+  }
+  document.addEventListener('pointermove', event => {
+    if (event.buttons === 0) {
+      releasePointer(event);
+      return;
+    }
+    if (screen !== 'playing') return;
+    for (let id = 0; id < inputs.length; id++) {
+      if (inputs[id].stickPointer === event.pointerId) moveStick(id, event);
+    }
+  }, true);
   function preventGameGesture(event) {
     if (screen === 'playing' && event.cancelable) event.preventDefault();
   }
@@ -2817,9 +2892,10 @@ h1 span {
   for (const type of ['contextmenu', 'selectstart', 'dblclick', 'gesturestart', 'gesturechange', 'gestureend']) {
     document.addEventListener(type, preventGameGesture, { capture: true, passive: false });
   }
-  for (const type of ['touchstart', 'touchmove', 'touchend']) {
+  for (const type of ['touchstart', 'touchmove', 'touchend', 'touchcancel']) {
     document.addEventListener(type, event => {
-      // Toolbar buttons use normal taps. Driving controls use pointer events.
+      if (useTouchEvents) syncTouches(event);
+      // Toolbar buttons keep normal taps. Driving controls handle contacts directly.
       if (event.target.closest?.('.game-top')) return;
       preventGameGesture(event);
     }, { capture: true, passive: false });
